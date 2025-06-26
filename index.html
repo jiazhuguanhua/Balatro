@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Balatro Web - 扑克 Roguelike 游戏</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="app">
+        <!-- 游戏标题 -->
+        <header class="game-header">
+            <h1 class="game-title">BALATRO</h1>
+            <div class="game-stats">
+                <div class="stat">
+                    <span class="stat-label">分数</span>
+                    <span class="stat-value" id="score">0</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">回合</span>
+                    <span class="stat-value" id="round">1</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">生命</span>
+                    <span class="stat-value" id="lives">3</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- 主游戏区域 -->
+        <main class="game-main">
+            <!-- 玩家状态栏 -->
+            <div class="player-status">
+                <div class="status-left">
+                    <!-- 目标分数显示 -->
+                    <div class="target-card">
+                        <h3>🎯 目标分数</h3>
+                        <div class="target-score" id="targetScore">300</div>
+                        <div class="current-hand-score">
+                            <span>当前手牌: </span>
+                            <span id="handScore">0</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="status-right">
+                    <!-- 技能牌展示区 -->
+                    <div class="active-skills">
+                        <h3>🃏 激活技能</h3>
+                        <div class="skill-container" id="activeSkills">
+                            <div class="no-skills">暂无技能牌</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 卡牌游戏区域 -->
+            <div class="game-area">
+                <!-- 选中的卡牌区域 -->
+                <div class="selected-cards">
+                    <h3>已选择的牌</h3>
+                    <div class="card-container" id="selectedCards">
+                        <!-- 选中的卡牌会显示在这里 -->
+                    </div>
+                    <div class="hand-info">
+                        <span id="handType">选择卡牌</span>
+                        <button id="playHandBtn" class="play-btn" disabled>出牌</button>
+                    </div>
+                </div>
+
+                <!-- 手牌区域 -->
+                <div class="hand-area">
+                    <h3>手牌</h3>
+                    <div class="card-container" id="handCards">
+                        <!-- 手牌会显示在这里 -->
+                    </div>
+                    <div class="hand-actions">
+                        <div class="action-info">
+                            <div class="action-counter">
+                                <span class="counter-label">🎯 出牌次数:</span>
+                                <span class="counter-value" id="handsLeft">4</span>
+                            </div>
+                            <div class="action-counter">
+                                <span class="counter-label">🗑️ 弃牌次数:</span>
+                                <span class="counter-value" id="discardsLeft">3</span>
+                            </div>
+                        </div>
+                        <div class="action-buttons">
+                            <button id="discardBtn" class="action-btn discard-btn">🗑️ 弃牌</button>
+                            <button id="drawBtn" class="action-btn draw-btn">📥 抽牌</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 商店区域 -->
+            <div class="shop-section" id="shopSection" style="display: none;">
+                <div class="shop-header">
+                    <h2 class="shop-title">🛒 神秘商店</h2>
+                    <div class="shop-money">
+                        <span class="money-label">💰 金币:</span>
+                        <span class="money-value" id="playerMoney">100</span>
+                    </div>
+                </div>
+                
+                <!-- 技能牌商店 -->
+                <div class="shop-category">
+                    <h3 class="category-title">🃏 技能牌</h3>
+                    <div class="shop-items skill-cards" id="skillCardItems">
+                        <!-- 技能牌会显示在这里 -->
+                    </div>
+                </div>
+                
+                <!-- 增强道具商店 -->
+                <div class="shop-category">
+                    <h3 class="category-title">⚡ 增强道具</h3>
+                    <div class="shop-items enhancement-items" id="enhancementItems">
+                        <!-- 增强道具会显示在这里 -->
+                    </div>
+                </div>
+                
+                <!-- 特殊物品商店 -->
+                <div class="shop-category">
+                    <h3 class="category-title">🌟 特殊物品</h3>
+                    <div class="shop-items special-items" id="specialItems">
+                        <!-- 特殊物品会显示在这里 -->
+                    </div>
+                </div>
+                
+                <div class="shop-actions">
+                    <button id="refreshShopBtn" class="shop-action-btn refresh-btn">🔄 刷新商店 (10金币)</button>
+                    <button id="skipShopBtn" class="shop-action-btn skip-btn">➡️ 继续游戏</button>
+                </div>
+            </div>
+        </main>
+
+        <!-- 游戏结果弹窗 -->
+        <div id="gameModal" class="modal">
+            <div class="modal-content">
+                <h2 id="modalTitle">游戏结束</h2>
+                <p id="modalMessage">你的分数: 0</p>
+                <div class="modal-actions">
+                    <button id="restartBtn" class="modal-btn">重新开始</button>
+                    <button id="nextRoundBtn" class="modal-btn" style="display: none;">下一回合</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
