@@ -21,8 +21,226 @@ class BalatroGame {
             extraMoney: 0
         };
         
+        // 音频设置
+        this.musicEnabled = true;
+        this.sfxEnabled = true;
+        this.bgMusic = document.getElementById('bgMusic');
+        
         this.initGame();
         this.bindEvents();
+        this.initAudio();
+        this.initVisualEffects();
+    }
+
+    // 初始化音频
+    initAudio() {
+        this.bgMusic.volume = 0.3;
+        this.playBackgroundMusic();
+        
+        // 创建音效对象
+        this.sounds = {
+            cardSelect: this.createSound([220, 330], 0.1, 'square'),
+            cardPlay: this.createSound([440, 550, 660], 0.15, 'triangle'),
+            scoreUp: this.createSound([523, 659, 784], 0.2, 'sine'),
+            roundWin: this.createSound([392, 523, 659, 784], 0.3, 'triangle'),
+            roundLose: this.createSound([220, 196, 175], 0.2, 'sawtooth'),
+            purchase: this.createSound([659, 784, 880], 0.15, 'sine'),
+            error: this.createSound([147, 131], 0.15, 'square')
+        };
+    }
+
+    // 创建音效
+    createSound(frequencies, volume = 0.1, type = 'sine') {
+        return () => {
+            if (!this.sfxEnabled) return;
+            
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const duration = 0.2;
+            
+            frequencies.forEach((freq, index) => {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(freq, audioContext.currentTime);
+                oscillator.type = type;
+                
+                gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+                gainNode.gain.linearRampToValueAtTime(volume, audioContext.currentTime + 0.01);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + duration);
+                
+                oscillator.start(audioContext.currentTime + index * 0.05);
+                oscillator.stop(audioContext.currentTime + duration + index * 0.05);
+            });
+        };
+    }
+
+    // 播放背景音乐
+    playBackgroundMusic() {
+        if (this.musicEnabled && this.bgMusic) {
+            this.bgMusic.play().catch(e => console.log('音乐播放失败:', e));
+        }
+    }
+
+    // 初始化视觉效果
+    initVisualEffects() {
+        this.createFloatingParticles();
+        this.startStarAnimation();
+    }
+
+    // 创建浮动粒子
+    createFloatingParticles() {
+        const container = document.getElementById('particlesContainer');
+        const particleCount = 20;
+        
+        for (let i = 0; i < particleCount; i++) {
+            const particle = document.createElement('div');
+            particle.style.cssText = `
+                position: absolute;
+                width: 3px;
+                height: 3px;
+                background: radial-gradient(circle, #00ffff, transparent);
+                border-radius: 50%;
+                pointer-events: none;
+                animation: floatParticle ${5 + Math.random() * 10}s linear infinite;
+                left: ${Math.random() * 100}%;
+                top: ${Math.random() * 100}%;
+                opacity: ${0.3 + Math.random() * 0.7};
+            `;
+            container.appendChild(particle);
+        }
+        
+        // 添加粒子动画样式
+        if (!document.getElementById('particle-styles')) {
+            const style = document.createElement('style');
+            style.id = 'particle-styles';
+            style.textContent = `
+                @keyframes floatParticle {
+                    0% { transform: translateY(0px) translateX(0px); }
+                    25% { transform: translateY(-100px) translateX(50px); }
+                    50% { transform: translateY(-200px) translateX(-30px); }
+                    75% { transform: translateY(-300px) translateX(80px); }
+                    100% { transform: translateY(-400px) translateX(-20px); opacity: 0; }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+    }
+
+    // 开始星星动画
+    startStarAnimation() {
+        setInterval(() => {
+            this.createShootingStar();
+        }, 3000 + Math.random() * 5000);
+    }
+
+    // 创建流星效果
+    createShootingStar() {
+        const star = document.createElement('div');
+        star.style.cssText = `
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: linear-gradient(45deg, #ffffff, #00ffff);
+            box-shadow: 0 0 10px #ffffff;
+            top: ${Math.random() * 50}%;
+            left: -10px;
+            animation: shootingStar 2s linear;
+            pointer-events: none;
+            z-index: 1;
+        `;
+        
+        document.getElementById('starsContainer').appendChild(star);
+        
+        setTimeout(() => {
+            if (star.parentNode) {
+                star.parentNode.removeChild(star);
+            }
+        }, 2000);
+        
+        // 添加流星动画
+        if (!document.getElementById('shooting-star-styles')) {
+            const style = document.createElement('style');
+            style.id = 'shooting-star-styles';
+            style.textContent = `
+                @keyframes shootingStar {
+                    0% { 
+                        left: -10px; 
+                        top: ${Math.random() * 50}%; 
+                        opacity: 0;
+                        transform: scale(0);
+                    }
+                    10% { 
+                        opacity: 1;
+                        transform: scale(1);
+                    }
+                    90% { 
+                        opacity: 1;
+                        transform: scale(1);
+                    }
+                    100% { 
+                        left: 110%; 
+                        top: ${Math.random() * 50 + 30}%; 
+                        opacity: 0;
+                        transform: scale(0);
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+    }
+
+    // 创建分数爆炸效果
+    createScoreExplosion(element, score) {
+        const explosion = document.createElement('div');
+        explosion.textContent = `+${score}`;
+        explosion.style.cssText = `
+            position: absolute;
+            color: #00ff00;
+            font-size: 2rem;
+            font-weight: bold;
+            pointer-events: none;
+            z-index: 1000;
+            animation: scoreExplosion 1s ease-out forwards;
+            text-shadow: 0 0 10px #00ff00;
+        `;
+        
+        const rect = element.getBoundingClientRect();
+        explosion.style.left = rect.left + rect.width / 2 + 'px';
+        explosion.style.top = rect.top + 'px';
+        
+        document.body.appendChild(explosion);
+        
+        setTimeout(() => {
+            if (explosion.parentNode) {
+                explosion.parentNode.removeChild(explosion);
+            }
+        }, 1000);
+        
+        // 添加分数爆炸动画
+        if (!document.getElementById('score-explosion-styles')) {
+            const style = document.createElement('style');
+            style.id = 'score-explosion-styles';
+            style.textContent = `
+                @keyframes scoreExplosion {
+                    0% { 
+                        transform: translateY(0) scale(0.5);
+                        opacity: 1;
+                    }
+                    50% { 
+                        transform: translateY(-50px) scale(1.2);
+                        opacity: 1;
+                    }
+                    100% { 
+                        transform: translateY(-100px) scale(0.8);
+                        opacity: 0;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
     }
 
     // 初始化游戏
@@ -85,6 +303,40 @@ class BalatroGame {
         document.getElementById('nextRoundBtn').addEventListener('click', () => this.nextRound());
         document.getElementById('skipShopBtn').addEventListener('click', () => this.skipShop());
         document.getElementById('refreshShopBtn').addEventListener('click', () => this.refreshShop());
+        
+        // 音频控制
+        document.getElementById('musicToggle').addEventListener('click', () => this.toggleMusic());
+        document.getElementById('sfxToggle').addEventListener('click', () => this.toggleSFX());
+    }
+
+    // 切换背景音乐
+    toggleMusic() {
+        this.musicEnabled = !this.musicEnabled;
+        const btn = document.getElementById('musicToggle');
+        
+        if (this.musicEnabled) {
+            btn.textContent = '🎵';
+            btn.classList.remove('muted');
+            this.playBackgroundMusic();
+        } else {
+            btn.textContent = '🔇';
+            btn.classList.add('muted');
+            this.bgMusic.pause();
+        }
+    }
+
+    // 切换音效
+    toggleSFX() {
+        this.sfxEnabled = !this.sfxEnabled;
+        const btn = document.getElementById('sfxToggle');
+        
+        if (this.sfxEnabled) {
+            btn.textContent = '🔊';
+            btn.classList.remove('muted');
+        } else {
+            btn.textContent = '🔇';
+            btn.classList.add('muted');
+        }
     }
 
     // 更新UI
@@ -131,8 +383,10 @@ class BalatroGame {
         const handContainer = document.getElementById('handCards');
         handContainer.innerHTML = '';
         
-        this.hand.forEach(card => {
+        this.hand.forEach((card, index) => {
             const cardElement = this.createCardElement(card);
+            cardElement.classList.add('card-enter');
+            cardElement.style.animationDelay = `${index * 0.1}s`;
             cardElement.addEventListener('click', () => this.selectCard(card));
             handContainer.appendChild(cardElement);
         });
@@ -143,9 +397,10 @@ class BalatroGame {
         const selectedContainer = document.getElementById('selectedCards');
         selectedContainer.innerHTML = '';
         
-        this.selectedCards.forEach(card => {
+        this.selectedCards.forEach((card, index) => {
             const cardElement = this.createCardElement(card);
             cardElement.classList.add('selected');
+            cardElement.style.animationDelay = `${index * 0.05}s`;
             cardElement.addEventListener('click', () => this.deselectCard(card));
             selectedContainer.appendChild(cardElement);
         });
@@ -160,6 +415,30 @@ class BalatroGame {
             <div class="card-suit">${card.suit}</div>
             <div class="card-rank" style="transform: rotate(180deg);">${card.rank}</div>
         `;
+        
+        // 添加卡牌悬停音效
+        cardDiv.addEventListener('mouseenter', () => {
+            if (this.sfxEnabled) {
+                // 轻微的悬停音效
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(400, audioContext.currentTime);
+                oscillator.type = 'sine';
+                
+                gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+                gainNode.gain.linearRampToValueAtTime(0.05, audioContext.currentTime + 0.01);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.1);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.1);
+            }
+        });
+        
         return cardDiv;
     }
 
@@ -167,6 +446,8 @@ class BalatroGame {
     selectCard(card) {
         if (this.selectedCards.length < 5 && !this.selectedCards.includes(card)) {
             this.selectedCards.push(card);
+            this.sounds.cardSelect();
+            this.addCardSelectEffect(card);
             this.updateUI();
         }
     }
@@ -176,7 +457,68 @@ class BalatroGame {
         const index = this.selectedCards.indexOf(card);
         if (index > -1) {
             this.selectedCards.splice(index, 1);
+            this.sounds.cardSelect();
             this.updateUI();
+        }
+    }
+
+    // 添加卡牌选择特效
+    addCardSelectEffect(card) {
+        // 创建光环效果
+        const cardElements = document.querySelectorAll('.card');
+        cardElements.forEach(element => {
+            if (element.textContent.includes(card.rank) && element.textContent.includes(card.suit)) {
+                this.createCardGlow(element);
+            }
+        });
+    }
+
+    // 创建卡牌光环效果
+    createCardGlow(element) {
+        const glow = document.createElement('div');
+        glow.style.cssText = `
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            right: -10px;
+            bottom: -10px;
+            background: radial-gradient(circle, rgba(0, 255, 255, 0.6), transparent);
+            border-radius: 50%;
+            pointer-events: none;
+            animation: cardGlowPulse 0.5s ease-out;
+            z-index: -1;
+        `;
+        
+        element.style.position = 'relative';
+        element.appendChild(glow);
+        
+        setTimeout(() => {
+            if (glow.parentNode) {
+                glow.parentNode.removeChild(glow);
+            }
+        }, 500);
+        
+        // 添加光环动画
+        if (!document.getElementById('card-glow-styles')) {
+            const style = document.createElement('style');
+            style.id = 'card-glow-styles';
+            style.textContent = `
+                @keyframes cardGlowPulse {
+                    0% { 
+                        transform: scale(0);
+                        opacity: 0;
+                    }
+                    50% { 
+                        transform: scale(1.2);
+                        opacity: 1;
+                    }
+                    100% { 
+                        transform: scale(1.5);
+                        opacity: 0;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
         }
     }
 
@@ -396,12 +738,23 @@ class BalatroGame {
         const scoreDetails = this.calculateDetailedHandScore(this.selectedCards, handType);
         const handScore = scoreDetails.finalScore;
         
+        // 播放出牌音效
+        this.sounds.cardPlay();
+        
         this.score += handScore;
         this.hands--;
         
         // 根据手牌类型给予金币奖励
         const moneyReward = this.calculateMoneyReward(handType, handScore);
         this.money += moneyReward + this.permanentBonuses.extraMoney;
+        
+        // 创建分数爆炸效果
+        this.createScoreExplosion(document.getElementById('score'), handScore);
+        
+        // 播放得分音效
+        setTimeout(() => {
+            this.sounds.scoreUp();
+        }, 200);
         
         // 显示详细的得分信息
         this.showScoreDetails(scoreDetails, moneyReward);
@@ -421,9 +774,15 @@ class BalatroGame {
         
         // 检查是否达到目标分数
         if (this.score >= this.targetScore) {
-            this.roundWin();
+            setTimeout(() => {
+                this.sounds.roundWin();
+                this.roundWin();
+            }, 1000);
         } else if (this.hands <= 0 && this.hand.length === 0) {
-            this.roundLose();
+            setTimeout(() => {
+                this.sounds.roundLose();
+                this.roundLose();
+            }, 1000);
         } else {
             this.updateUI();
         }
@@ -802,6 +1161,7 @@ class BalatroGame {
     // 购买物品
     buyItem(item, element) {
         if (item.sold || this.money < item.price) {
+            this.sounds.error();
             this.showTemporaryMessage('金币不足或物品已售出！', 'error');
             return;
         }
@@ -810,10 +1170,66 @@ class BalatroGame {
         item.sold = true;
         element.classList.add('sold');
         
+        // 播放购买音效
+        this.sounds.purchase();
+        
         // 应用物品效果
         this.applyItemEffect(item);
         this.updateUI();
         this.showTemporaryMessage(`购买成功: ${item.name}`, 'success');
+        
+        // 添加购买特效
+        this.createPurchaseEffect(element);
+    }
+
+    // 创建购买特效
+    createPurchaseEffect(element) {
+        const effect = document.createElement('div');
+        effect.style.cssText = `
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 100px;
+            height: 100px;
+            background: radial-gradient(circle, rgba(255, 215, 0, 0.8), transparent);
+            border-radius: 50%;
+            pointer-events: none;
+            animation: purchaseExplosion 0.6s ease-out;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+        `;
+        
+        element.style.position = 'relative';
+        element.appendChild(effect);
+        
+        setTimeout(() => {
+            if (effect.parentNode) {
+                effect.parentNode.removeChild(effect);
+            }
+        }, 600);
+        
+        // 添加购买爆炸动画
+        if (!document.getElementById('purchase-explosion-styles')) {
+            const style = document.createElement('style');
+            style.id = 'purchase-explosion-styles';
+            style.textContent = `
+                @keyframes purchaseExplosion {
+                    0% { 
+                        transform: translate(-50%, -50%) scale(0);
+                        opacity: 1;
+                    }
+                    50% { 
+                        transform: translate(-50%, -50%) scale(1.5);
+                        opacity: 0.8;
+                    }
+                    100% { 
+                        transform: translate(-50%, -50%) scale(3);
+                        opacity: 0;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
     }
 
     // 应用物品效果
@@ -852,9 +1268,10 @@ class BalatroGame {
         }
     }
 
-    // 刷新商店
+    // 刷新商店（更新版本）
     refreshShop() {
         if (this.money < 10) {
+            this.sounds.error();
             this.showTemporaryMessage('金币不足，无法刷新商店！', 'error');
             return;
         }
@@ -862,6 +1279,7 @@ class BalatroGame {
         this.money -= 10;
         this.generateShopItems();
         this.updateUI();
+        this.sounds.purchase();
         this.showTemporaryMessage('商店已刷新！', 'success');
     }
 

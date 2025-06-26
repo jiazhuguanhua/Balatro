@@ -8,22 +8,35 @@
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
 </head>
 <body>
+    <!-- 动态背景 -->
+    <div class="background-effects">
+        <div class="stars-container" id="starsContainer"></div>
+        <div class="particles-container" id="particlesContainer"></div>
+        <div class="aurora-effect"></div>
+    </div>
+    
     <div id="app">
         <!-- 游戏标题 -->
         <header class="game-header">
             <h1 class="game-title">BALATRO</h1>
-            <div class="game-stats">
-                <div class="stat">
-                    <span class="stat-label">分数</span>
-                    <span class="stat-value" id="score">0</span>
+            <div class="header-controls">
+                <div class="audio-controls">
+                    <button id="musicToggle" class="audio-btn" title="背景音乐">🎵</button>
+                    <button id="sfxToggle" class="audio-btn" title="音效">🔊</button>
                 </div>
-                <div class="stat">
-                    <span class="stat-label">回合</span>
-                    <span class="stat-value" id="round">1</span>
-                </div>
-                <div class="stat">
-                    <span class="stat-label">生命</span>
-                    <span class="stat-value" id="lives">3</span>
+                <div class="game-stats">
+                    <div class="stat">
+                        <span class="stat-label">分数</span>
+                        <span class="stat-value" id="score">0</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">回合</span>
+                        <span class="stat-value" id="round">1</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">生命</span>
+                        <span class="stat-value" id="lives">3</span>
+                    </div>
                 </div>
             </div>
         </header>
@@ -175,6 +188,11 @@
         </div>
     </div>
 
+    <!-- 音频元素 -->
+    <audio id="bgMusic" loop>
+        <source src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMnCj6b3/HNeSsFJnbB7t2OQA0UZMLx6N6NORQfdLPx5qJcEQdOp+T1tnkfCEOy0/DFeC4KIX7I8tuPPw0lUKfk866ReTMFOpLh8N6PRg0XZrDj665XFQdLn9/ypbFqGwY9j9X90MZrKwUogczz44pbGQxOqeTwrm4jBjGBvfDgklMUBF67ysQ1HBxPt+LtvGQmBSJ+xPHbfSkNJVGo6fh1HwdPqOL1rXcdCT2a3u9BIAxPqtn1wWsqBSV+yO7eizEKHWqz5PSsWBIKS6Dh9KppHw=="/>
+    </audio>
+    
     <script src="script.js"></script>
 </body>
 </html>
