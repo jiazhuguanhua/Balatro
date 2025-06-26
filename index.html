@@ -64,7 +64,34 @@
                         <!-- 选中的卡牌会显示在这里 -->
                     </div>
                     <div class="hand-info">
-                        <span id="handType">选择卡牌</span>
+                        <div class="hand-details">
+                            <div class="hand-type">
+                                <span id="handType">选择卡牌</span>
+                            </div>
+                            <div class="score-breakdown" id="scoreBreakdown">
+                                <div class="breakdown-row">
+                                    <span class="label">基础筹码:</span>
+                                    <span class="value" id="baseChips">0</span>
+                                </div>
+                                <div class="breakdown-row">
+                                    <span class="label">卡牌总值:</span>
+                                    <span class="value" id="cardTotal">0</span>
+                                </div>
+                                <div class="breakdown-row">
+                                    <span class="label">筹码合计:</span>
+                                    <span class="value chips-total" id="chipsTotal">0</span>
+                                </div>
+                                <div class="breakdown-row multiplier-row">
+                                    <span class="label">倍率:</span>
+                                    <span class="value multiplier-value" id="multiplierTotal">1x</span>
+                                </div>
+                                <div class="breakdown-separator">×</div>
+                                <div class="breakdown-row final-row">
+                                    <span class="label">最终分数:</span>
+                                    <span class="value final-score" id="finalScore">0</span>
+                                </div>
+                            </div>
+                        </div>
                         <button id="playHandBtn" class="play-btn" disabled>出牌</button>
                     </div>
                 </div>

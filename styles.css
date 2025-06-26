@@ -252,6 +252,97 @@ body {
     margin-top: 1rem;
     padding-top: 1rem;
     border-top: 1px solid rgba(255, 255, 255, 0.2);
+    gap: 2rem;
+}
+
+.hand-details {
+    flex: 1;
+}
+
+.hand-type {
+    font-size: 1.4rem;
+    color: #00ff00;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    text-align: center;
+    padding: 0.5rem;
+    background: rgba(0, 255, 0, 0.1);
+    border-radius: 10px;
+    border: 1px solid rgba(0, 255, 0, 0.3);
+}
+
+.score-breakdown {
+    background: linear-gradient(145deg, #2a2a4a, #1a1a3a);
+    border: 2px solid #00ffff;
+    border-radius: 15px;
+    padding: 1rem;
+    font-family: 'Orbitron', monospace;
+}
+
+.breakdown-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.3rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.breakdown-row:last-child {
+    border-bottom: none;
+}
+
+.breakdown-row .label {
+    color: #cccccc;
+    font-size: 0.9rem;
+}
+
+.breakdown-row .value {
+    color: #ffffff;
+    font-weight: bold;
+    font-size: 1rem;
+}
+
+.chips-total {
+    color: #00ffff !important;
+    font-size: 1.1rem !important;
+}
+
+.multiplier-row {
+    border-top: 2px solid rgba(255, 255, 0, 0.3);
+    border-bottom: 2px solid rgba(255, 255, 0, 0.3);
+    margin: 0.5rem 0;
+    padding: 0.5rem 0;
+    background: rgba(255, 255, 0, 0.05);
+}
+
+.multiplier-value {
+    color: #ffff00 !important;
+    font-size: 1.2rem !important;
+    font-weight: 900 !important;
+}
+
+.breakdown-separator {
+    text-align: center;
+    font-size: 1.5rem;
+    color: #ff6600;
+    font-weight: 900;
+    margin: 0.5rem 0;
+    text-shadow: 0 0 10px rgba(255, 102, 0, 0.5);
+}
+
+.final-row {
+    background: rgba(0, 255, 0, 0.1);
+    border-radius: 8px;
+    padding: 0.8rem !important;
+    margin-top: 0.5rem;
+    border: 2px solid rgba(0, 255, 0, 0.3) !important;
+}
+
+.final-score {
+    color: #00ff00 !important;
+    font-size: 1.4rem !important;
+    font-weight: 900 !important;
+    text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
 }
 
 #handType {
@@ -636,6 +727,55 @@ body {
         gap: 1rem;
     }
     
+    .player-status {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .hand-info {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: stretch;
+    }
+    
+    .hand-details {
+        width: 100%;
+    }
+    
+    .score-breakdown {
+        padding: 0.8rem;
+    }
+    
+    .breakdown-row {
+        padding: 0.4rem 0;
+    }
+    
+    .breakdown-row .label {
+        font-size: 0.8rem;
+    }
+    
+    .breakdown-row .value {
+        font-size: 0.9rem;
+    }
+    
+    .chips-total {
+        font-size: 1rem !important;
+    }
+    
+    .multiplier-value {
+        font-size: 1.1rem !important;
+    }
+    
+    .final-score {
+        font-size: 1.2rem !important;
+    }
+    
+    .hand-type {
+        font-size: 1.2rem;
+        padding: 0.3rem;
+        margin-bottom: 0.8rem;
+    }
+    
     .card {
         width: 60px;
         height: 80px;
@@ -649,6 +789,52 @@ body {
     .modal-content {
         width: 90%;
         margin: 20% auto;
+    }
+    
+    .shop-items {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .shop-item {
+        min-width: 280px;
+        max-width: 300px;
+    }
+    
+    .shop-actions {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .action-info {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+    
+    .action-buttons {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .target-score {
+        font-size: 2rem;
+    }
+    
+    .skill-container {
+        gap: 4px;
+    }
+    
+    .skill-card-mini {
+        width: 40px;
+        height: 55px;
+        font-size: 0.6rem;
+    }
+    
+    .temp-message {
+        max-width: 95% !important;
+        padding: 1rem !important;
+        font-size: 0.8rem !important;
     }
 }
 

@@ -30,6 +30,7 @@ class BalatroGame {
         this.createDeck();
         this.shuffleDeck();
         this.dealInitialHand();
+        this.generateShopItems();
         this.updateUI();
     }
 
@@ -182,14 +183,100 @@ class BalatroGame {
     // 更新手牌类型显示
     updateHandType() {
         const handType = this.getHandType(this.selectedCards);
-        const handScore = this.calculateHandScore(this.selectedCards, handType);
+        const scoreDetails = this.calculateDetailedHandScore(this.selectedCards, handType);
         
         document.getElementById('handType').textContent = handType.name;
-        this.currentHandScore = handScore;
-        document.getElementById('handScore').textContent = handScore;
+        
+        // 更新分数详情
+        document.getElementById('baseChips').textContent = scoreDetails.baseChips;
+        document.getElementById('cardTotal').textContent = scoreDetails.cardTotal;
+        document.getElementById('chipsTotal').textContent = scoreDetails.totalChips;
+        document.getElementById('multiplierTotal').textContent = scoreDetails.totalMultiplier + 'x';
+        document.getElementById('finalScore').textContent = scoreDetails.finalScore;
+        
+        this.currentHandScore = scoreDetails.finalScore;
+        document.getElementById('handScore').textContent = scoreDetails.finalScore;
         
         const playBtn = document.getElementById('playHandBtn');
         playBtn.disabled = this.selectedCards.length === 0 || this.hands <= 0;
+    }
+
+    // 计算详细的手牌分数
+    calculateDetailedHandScore(cards, handType) {
+        if (cards.length === 0) {
+            return {
+                baseChips: 0,
+                cardTotal: 0,
+                totalChips: 0,
+                baseMultiplier: 0,
+                skillMultiplier: 0,
+                permanentMultiplier: 1,
+                totalMultiplier: 0,
+                finalScore: 0,
+                breakdown: []
+            };
+        }
+        
+        let baseChips = handType.chips;
+        let baseMultiplier = handType.multiplier;
+        const cardTotal = cards.reduce((sum, card) => sum + card.value, 0);
+        
+        let skillChipsBonus = 0;
+        let skillMultiplierBonus = 0;
+        let breakdown = [];
+        
+        // 应用技能牌效果并记录详情
+        this.activeSkills.forEach(skill => {
+            switch (skill.effect.type) {
+                case 'chipBonus':
+                    skillChipsBonus += skill.effect.value;
+                    breakdown.push(`${skill.name}: +${skill.effect.value} 筹码`);
+                    break;
+                case 'multiplierBonus':
+                    skillMultiplierBonus += skill.effect.value;
+                    breakdown.push(`${skill.name}: +${skill.effect.value} 倍率`);
+                    break;
+                case 'handTypeBonus':
+                    if (handType.name === skill.effect.handType) {
+                        skillMultiplierBonus += skill.effect.value;
+                        breakdown.push(`${skill.name}: +${skill.effect.value} 倍率 (${skill.effect.handType})`);
+                    }
+                    break;
+                case 'suitBonus':
+                    const suitCount = cards.filter(card => card.suit === skill.effect.suit).length;
+                    if (suitCount > 0) {
+                        const bonus = suitCount * skill.effect.value;
+                        skillChipsBonus += bonus;
+                        breakdown.push(`${skill.name}: +${bonus} 筹码 (${suitCount}张${skill.effect.suit})`);
+                    }
+                    break;
+                case 'rankBonus':
+                    const rankCount = cards.filter(card => card.rank === skill.effect.rank).length;
+                    if (rankCount > 0) {
+                        const bonus = rankCount * skill.effect.value;
+                        skillMultiplierBonus += bonus;
+                        breakdown.push(`${skill.name}: +${bonus} 倍率 (${rankCount}张${skill.effect.rank})`);
+                    }
+                    break;
+            }
+        });
+        
+        const totalChips = baseChips + cardTotal + skillChipsBonus;
+        const totalMultiplier = (baseMultiplier + skillMultiplierBonus) * this.permanentBonuses.scoreMultiplier;
+        const finalScore = Math.floor(totalChips * totalMultiplier);
+        
+        return {
+            baseChips,
+            cardTotal,
+            skillChipsBonus,
+            totalChips,
+            baseMultiplier,
+            skillMultiplierBonus,
+            permanentMultiplier: this.permanentBonuses.scoreMultiplier,
+            totalMultiplier,
+            finalScore,
+            breakdown
+        };
     }
 
     // 获取手牌类型
@@ -306,7 +393,8 @@ class BalatroGame {
         if (this.selectedCards.length === 0 || this.hands <= 0) return;
         
         const handType = this.getHandType(this.selectedCards);
-        const handScore = this.calculateHandScore(this.selectedCards, handType);
+        const scoreDetails = this.calculateDetailedHandScore(this.selectedCards, handType);
+        const handScore = scoreDetails.finalScore;
         
         this.score += handScore;
         this.hands--;
@@ -314,6 +402,9 @@ class BalatroGame {
         // 根据手牌类型给予金币奖励
         const moneyReward = this.calculateMoneyReward(handType, handScore);
         this.money += moneyReward + this.permanentBonuses.extraMoney;
+        
+        // 显示详细的得分信息
+        this.showScoreDetails(scoreDetails, moneyReward);
         
         // 触发技能牌的额外效果
         this.triggerSkillEffects('onPlayHand', { handType, cards: this.selectedCards, score: handScore });
@@ -342,6 +433,38 @@ class BalatroGame {
         setTimeout(() => {
             document.getElementById('score').classList.remove('score-update');
         }, 500);
+    }
+
+    // 显示得分详情
+    showScoreDetails(scoreDetails, moneyReward) {
+        let message = `🎯 手牌: ${document.getElementById('handType').textContent}\n`;
+        message += `💎 筹码: ${scoreDetails.totalChips} = ${scoreDetails.baseChips}(基础) + ${scoreDetails.cardTotal}(卡牌)`;
+        
+        if (scoreDetails.skillChipsBonus > 0) {
+            message += ` + ${scoreDetails.skillChipsBonus}(技能)`;
+        }
+        
+        message += `\n⚡ 倍率: ${scoreDetails.totalMultiplier}x`;
+        
+        if (scoreDetails.skillMultiplierBonus > 0) {
+            message += ` = ${scoreDetails.baseMultiplier}(基础) + ${scoreDetails.skillMultiplierBonus}(技能)`;
+        }
+        
+        if (this.permanentBonuses.scoreMultiplier > 1) {
+            message += ` × ${this.permanentBonuses.scoreMultiplier}(永久)`;
+        }
+        
+        message += `\n🏆 最终分数: ${scoreDetails.finalScore}`;
+        message += `\n💰 获得金币: +${moneyReward}`;
+        
+        if (scoreDetails.breakdown.length > 0) {
+            message += `\n\n📋 技能效果:`;
+            scoreDetails.breakdown.forEach(effect => {
+                message += `\n• ${effect}`;
+            });
+        }
+        
+        this.showTemporaryMessage(message, 'success', 4000);
     }
 
     // 计算金币奖励
@@ -439,8 +562,8 @@ class BalatroGame {
     nextRound() {
         this.round++;
         this.targetScore = Math.floor(this.targetScore * 1.6);
-        this.hands = 4;
-        this.discards = 3;
+        this.hands = 4 + this.permanentBonuses.extraHands;
+        this.discards = 3 + this.permanentBonuses.extraDiscards;
         this.selectedCards = [];
         
         // 重新创建牌组并发牌
@@ -460,9 +583,17 @@ class BalatroGame {
         this.round = 1;
         this.lives = 3;
         this.targetScore = 300;
+        this.money = 100;
         this.hands = 4;
         this.discards = 3;
         this.selectedCards = [];
+        this.activeSkills = [];
+        this.permanentBonuses = {
+            scoreMultiplier: 1,
+            extraHands: 0,
+            extraDiscards: 0,
+            extraMoney: 0
+        };
         
         document.getElementById('gameModal').style.display = 'none';
         document.getElementById('shopSection').style.display = 'none';
@@ -472,57 +603,325 @@ class BalatroGame {
 
     // 生成商店物品
     generateShopItems() {
-        const items = [
-            { name: '额外生命', price: 100, effect: 'life' },
-            { name: '额外手数', price: 150, effect: 'hands' },
-            { name: '额外弃牌', price: 120, effect: 'discards' },
-            { name: '分数加成', price: 200, effect: 'scoreBonus' }
+        this.shopItems = {
+            skillCards: this.generateSkillCards(),
+            enhancements: this.generateEnhancements(),
+            specials: this.generateSpecials()
+        };
+        this.renderShop();
+    }
+
+    // 生成技能牌
+    generateSkillCards() {
+        const allSkillCards = [
+            {
+                id: 'lucky_seven',
+                name: '幸运七',
+                shortName: '幸7',
+                icon: '🍀',
+                description: '每当你打出包含7的牌时，获得额外的2倍乘数',
+                price: 80,
+                effect: { type: 'rankBonus', rank: '7', value: 2 },
+                trigger: 'onPlayHand'
+            },
+            {
+                id: 'royal_flush',
+                name: '皇家同花顺',
+                shortName: '皇室',
+                icon: '👑',
+                description: '同花顺的乘数增加5',
+                price: 150,
+                effect: { type: 'handTypeBonus', handType: '同花顺', value: 5 }
+            },
+            {
+                id: 'hearts_lover',
+                name: '红心之恋',
+                shortName: '红心',
+                icon: '💖',
+                description: '每张红心牌增加10点基础分数',
+                price: 90,
+                effect: { type: 'suitBonus', suit: '♥', value: 10 }
+            },
+            {
+                id: 'spades_power',
+                name: '黑桃力量',
+                shortName: '黑桃',
+                icon: '⚫',
+                description: '每张黑桃牌增加8点基础分数',
+                price: 85,
+                effect: { type: 'suitBonus', suit: '♠', value: 8 }
+            },
+            {
+                id: 'pair_master',
+                name: '对子大师',
+                shortName: '对子',
+                icon: '👥',
+                description: '一对和两对的乘数增加3',
+                price: 100,
+                effect: { type: 'handTypeBonus', handType: '一对', value: 3 }
+            },
+            {
+                id: 'multiplier_boost',
+                name: '乘数增强',
+                shortName: '乘数',
+                icon: '✖️',
+                description: '所有手牌乘数+2',
+                price: 120,
+                effect: { type: 'multiplierBonus', value: 2 }
+            },
+            {
+                id: 'chip_boost',
+                name: '分数增强',
+                shortName: '分数',
+                icon: '🔹',
+                description: '所有手牌基础分数+30',
+                price: 110,
+                effect: { type: 'chipBonus', value: 30 }
+            },
+            {
+                id: 'money_maker',
+                name: '生财有道',
+                shortName: '生财',
+                icon: '💰',
+                description: '每次出牌额外获得5金币',
+                price: 95,
+                triggerEffect: { type: 'moneyBonus', value: 5 },
+                trigger: 'onPlayHand'
+            }
         ];
         
-        this.shopItems = items.slice(0, 3);
-        this.renderShop();
+        // 随机选择3张技能牌
+        const shuffled = allSkillCards.sort(() => 0.5 - Math.random());
+        return shuffled.slice(0, 3);
+    }
+
+    // 生成增强道具
+    generateEnhancements() {
+        const allEnhancements = [
+            {
+                id: 'extra_life',
+                name: '额外生命',
+                icon: '❤️',
+                description: '增加1点生命值',
+                price: 100,
+                effect: 'life'
+            },
+            {
+                id: 'extra_hands',
+                name: '额外手数',
+                icon: '🤲',
+                description: '每回合增加2次出牌机会',
+                price: 150,
+                effect: 'hands'
+            },
+            {
+                id: 'extra_discards',
+                name: '额外弃牌',
+                icon: '🗑️',
+                description: '每回合增加2次弃牌机会',
+                price: 120,
+                effect: 'discards'
+            },
+            {
+                id: 'score_multiplier',
+                name: '分数倍增器',
+                icon: '📈',
+                description: '所有分数获得1.5倍乘数',
+                price: 200,
+                effect: 'scoreMultiplier'
+            }
+        ];
+        
+        return allEnhancements.slice(0, 2);
+    }
+
+    // 生成特殊物品
+    generateSpecials() {
+        const allSpecials = [
+            {
+                id: 'golden_card',
+                name: '黄金卡牌',
+                icon: '🏆',
+                description: '直接获得200分数',
+                price: 150,
+                effect: 'directScore'
+            },
+            {
+                id: 'money_bag',
+                name: '金币袋',
+                icon: '💼',
+                description: '直接获得100金币',
+                price: 50,
+                effect: 'directMoney'
+            },
+            {
+                id: 'target_reducer',
+                name: '目标减少器',
+                icon: '🎯',
+                description: '减少当前目标分数的20%',
+                price: 180,
+                effect: 'reduceTarget'
+            }
+        ];
+        
+        return allSpecials.slice(0, 2);
     }
 
     // 渲染商店
     renderShop() {
-        const shopContainer = document.getElementById('shopItems');
-        shopContainer.innerHTML = '';
+        this.renderShopCategory('skillCardItems', this.shopItems.skillCards, 'skill-card');
+        this.renderShopCategory('enhancementItems', this.shopItems.enhancements, 'enhancement');
+        this.renderShopCategory('specialItems', this.shopItems.specials, 'special');
+    }
+
+    // 渲染商店分类
+    renderShopCategory(containerId, items, itemClass) {
+        const container = document.getElementById(containerId);
+        container.innerHTML = '';
         
-        this.shopItems.forEach(item => {
+        items.forEach(item => {
             const itemElement = document.createElement('div');
-            itemElement.className = 'shop-item';
+            itemElement.className = `shop-item ${itemClass}`;
             itemElement.innerHTML = `
+                <div class="shop-item-icon">${item.icon}</div>
                 <div class="shop-item-name">${item.name}</div>
-                <div class="shop-item-price">$${item.price}</div>
+                <div class="shop-item-description">${item.description}</div>
+                <div class="shop-item-price">💰 ${item.price}</div>
             `;
             
-            itemElement.addEventListener('click', () => this.buyItem(item));
-            shopContainer.appendChild(itemElement);
+            if (!item.sold) {
+                itemElement.addEventListener('click', () => this.buyItem(item, itemElement));
+            } else {
+                itemElement.classList.add('sold');
+            }
+            
+            container.appendChild(itemElement);
         });
     }
 
     // 购买物品
-    buyItem(item) {
-        if (this.score >= item.price) {
-            this.score -= item.price;
-            
+    buyItem(item, element) {
+        if (item.sold || this.money < item.price) {
+            this.showTemporaryMessage('金币不足或物品已售出！', 'error');
+            return;
+        }
+        
+        this.money -= item.price;
+        item.sold = true;
+        element.classList.add('sold');
+        
+        // 应用物品效果
+        this.applyItemEffect(item);
+        this.updateUI();
+        this.showTemporaryMessage(`购买成功: ${item.name}`, 'success');
+    }
+
+    // 应用物品效果
+    applyItemEffect(item) {
+        if (item.effect) {
             switch (item.effect) {
                 case 'life':
                     this.lives++;
                     break;
                 case 'hands':
+                    this.permanentBonuses.extraHands += 2;
                     this.hands += 2;
                     break;
                 case 'discards':
+                    this.permanentBonuses.extraDiscards += 2;
                     this.discards += 2;
                     break;
-                case 'scoreBonus':
-                    this.score += 100;
+                case 'scoreMultiplier':
+                    this.permanentBonuses.scoreMultiplier += 0.5;
+                    break;
+                case 'directScore':
+                    this.score += 200;
+                    break;
+                case 'directMoney':
+                    this.money += 100;
+                    break;
+                case 'reduceTarget':
+                    this.targetScore = Math.floor(this.targetScore * 0.8);
                     break;
             }
-            
-            this.updateUI();
-            this.skipShop();
+        }
+        
+        // 如果是技能牌，添加到激活技能列表
+        if (item.effect && typeof item.effect === 'object') {
+            this.activeSkills.push(item);
+        }
+    }
+
+    // 刷新商店
+    refreshShop() {
+        if (this.money < 10) {
+            this.showTemporaryMessage('金币不足，无法刷新商店！', 'error');
+            return;
+        }
+        
+        this.money -= 10;
+        this.generateShopItems();
+        this.updateUI();
+        this.showTemporaryMessage('商店已刷新！', 'success');
+    }
+
+    // 显示临时消息
+    showTemporaryMessage(message, type = 'info', duration = 2000) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `temp-message ${type}`;
+        
+        // 处理多行消息
+        if (message.includes('\n')) {
+            const lines = message.split('\n');
+            messageDiv.innerHTML = lines.map(line => `<div>${line}</div>`).join('');
+        } else {
+            messageDiv.textContent = message;
+        }
+        
+        messageDiv.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: ${type === 'error' ? '#ff4444' : type === 'success' ? '#44ff44' : '#4444ff'};
+            color: white;
+            padding: 1.5rem 2rem;
+            border-radius: 15px;
+            font-weight: bold;
+            z-index: 2000;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            animation: fadeInOut ${duration}ms ease-in-out;
+            max-width: 80%;
+            max-height: 80%;
+            overflow-y: auto;
+            text-align: left;
+            font-family: 'Orbitron', monospace;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            white-space: pre-line;
+        `;
+        
+        document.body.appendChild(messageDiv);
+        
+        setTimeout(() => {
+            if (document.body.contains(messageDiv)) {
+                document.body.removeChild(messageDiv);
+            }
+        }, duration);
+        
+        // 添加动画样式
+        if (!document.getElementById('temp-message-styles')) {
+            const style = document.createElement('style');
+            style.id = 'temp-message-styles';
+            style.textContent = `
+                @keyframes fadeInOut {
+                    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+                    10% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+                    90% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+                    100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+                }
+            `;
+            document.head.appendChild(style);
         }
     }
 
