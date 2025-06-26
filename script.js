@@ -77,11 +77,104 @@ class BalatroGame {
         };
     }
 
-    // 播放背景音乐
+    // 播放背景音乐 - 改进版本
     playBackgroundMusic() {
         if (this.musicEnabled && this.bgMusic) {
-            this.bgMusic.play().catch(e => console.log('音乐播放失败:', e));
+            // 创建更适合的背景音乐
+            this.generateBetterBackgroundMusic();
         }
+    }
+
+    // 生成更好的背景音乐
+    generateBetterBackgroundMusic() {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // 创建主和弦进行 - 使用更舒缓的音调
+        const chordProgression = [
+            [220, 277, 330], // Am
+            [246, 311, 370], // Bm
+            [261, 330, 392], // C
+            [293, 370, 440], // Dm
+            [220, 277, 330], // Am
+            [246, 311, 370], // Bm
+            [261, 330, 392], // C
+            [196, 246, 293]  // G
+        ];
+        
+        let chordIndex = 0;
+        const playChord = () => {
+            if (!this.musicEnabled) return;
+            
+            const chord = chordProgression[chordIndex];
+            chordIndex = (chordIndex + 1) % chordProgression.length;
+            
+            // 为每个音符创建振荡器
+            chord.forEach((frequency, noteIndex) => {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                const filterNode = audioContext.createBiquadFilter();
+                
+                // 设置音色和滤波器
+                oscillator.type = 'triangle';
+                oscillator.frequency.setValueAtTime(frequency * 0.5, audioContext.currentTime); // 降低一个八度
+                
+                filterNode.type = 'lowpass';
+                filterNode.frequency.setValueAtTime(1000, audioContext.currentTime);
+                filterNode.Q.setValueAtTime(1, audioContext.currentTime);
+                
+                // 连接音频节点
+                oscillator.connect(filterNode);
+                filterNode.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                // 设置音量包络
+                const volume = 0.03 * (1 - noteIndex * 0.2); // 根音最响
+                gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+                gainNode.gain.linearRampToValueAtTime(volume, audioContext.currentTime + 0.1);
+                gainNode.gain.exponentialRampToValueAtTime(volume * 0.3, audioContext.currentTime + 2.8);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 3);
+                
+                // 播放音符
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 3);
+            });
+            
+            // 添加轻柔的旋律线
+            if (Math.random() < 0.4) {
+                this.playMelodyNote(audioContext, chord[0] * 2); // 高八度旋律
+            }
+        };
+        
+        // 开始播放和弦进行
+        playChord();
+        this.musicInterval = setInterval(playChord, 3000);
+    }
+
+    // 播放旋律音符
+    playMelodyNote(audioContext, baseFreq) {
+        const melodyNotes = [baseFreq, baseFreq * 1.125, baseFreq * 1.25, baseFreq * 1.5];
+        const randomNote = melodyNotes[Math.floor(Math.random() * melodyNotes.length)];
+        
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        const filterNode = audioContext.createBiquadFilter();
+        
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(randomNote, audioContext.currentTime);
+        
+        filterNode.type = 'lowpass';
+        filterNode.frequency.setValueAtTime(2000, audioContext.currentTime);
+        
+        oscillator.connect(filterNode);
+        filterNode.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+        gainNode.gain.linearRampToValueAtTime(0.02, audioContext.currentTime + 0.05);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.8);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.8);
     }
 
     // 初始化视觉效果
@@ -310,6 +403,7 @@ class BalatroGame {
     }
 
     // 切换背景音乐
+    // 音乐控制 - 增强版
     toggleMusic() {
         this.musicEnabled = !this.musicEnabled;
         const btn = document.getElementById('musicToggle');
@@ -321,7 +415,7 @@ class BalatroGame {
         } else {
             btn.textContent = '🔇';
             btn.classList.add('muted');
-            this.bgMusic.pause();
+            this.stopBackgroundMusic();
         }
     }
 
@@ -339,8 +433,22 @@ class BalatroGame {
         }
     }
 
+    // 停止背景音乐
+    stopBackgroundMusic() {
+        if (this.musicInterval) {
+            clearInterval(this.musicInterval);
+            this.musicInterval = null;
+        }
+        if (this.bgMusic) {
+            this.bgMusic.pause();
+            this.bgMusic.currentTime = 0;
+        }
+    }
+
     // 更新UI
+    // 更新UI - 增强版
     updateUI() {
+        // 基础信息更新
         document.getElementById('score').textContent = this.score;
         document.getElementById('round').textContent = this.round;
         document.getElementById('lives').textContent = this.lives;
@@ -350,10 +458,96 @@ class BalatroGame {
         document.getElementById('handsLeft').textContent = this.hands;
         document.getElementById('discardsLeft').textContent = this.discards;
         
+        // 智能高亮系统
+        this.applySmartHighlighting();
+        
+        // 渲染组件
         this.renderHand();
         this.renderSelectedCards();
         this.renderActiveSkills();
         this.updateHandType();
+    }
+
+    // 智能高亮系统
+    applySmartHighlighting() {
+        // 重置所有高亮
+        this.clearHighlights();
+        
+        // 生命值警告
+        const livesElement = document.getElementById('lives');
+        if (this.lives <= 1) {
+            livesElement.style.color = '#ff4444';
+            livesElement.classList.add('highlight');
+        } else if (this.lives <= 2) {
+            livesElement.style.color = '#ffaa00';
+        } else {
+            livesElement.style.color = '#00ff00';
+        }
+        
+        // 出牌次数警告
+        const handsElement = document.getElementById('handsLeft');
+        if (this.hands <= 1) {
+            handsElement.style.color = '#ff4444';
+            handsElement.classList.add('hands-warning');
+        } else if (this.hands <= 2) {
+            handsElement.style.color = '#ffaa00';
+        } else {
+            handsElement.style.color = '#00ffff';
+        }
+        
+        // 目标分数状态
+        const targetElement = document.getElementById('targetScore');
+        const progressPercentage = (this.score / this.targetScore) * 100;
+        
+        if (progressPercentage >= 90) {
+            targetElement.style.color = '#00ff00';
+        } else if (progressPercentage >= 70) {
+            targetElement.style.color = '#ffff00';
+        } else if (progressPercentage >= 40) {
+            targetElement.style.color = '#ffaa00';
+        } else {
+            targetElement.style.color = '#ff6600';
+            targetElement.classList.add('critical');
+        }
+        
+        // 分数高亮
+        const scoreElement = document.getElementById('score');
+        if (this.score >= this.targetScore) {
+            scoreElement.style.color = '#00ff00';
+            scoreElement.classList.add('highlight');
+        } else if (this.score >= this.targetScore * 0.8) {
+            scoreElement.style.color = '#ffff00';
+        } else {
+            scoreElement.style.color = '#00ffff';
+        }
+        
+        // 金币状态
+        const moneyElement = document.getElementById('playerMoney');
+        if (this.money >= 200) {
+            moneyElement.style.color = '#ffd700';
+            moneyElement.classList.add('highlight');
+        } else if (this.money >= 100) {
+            moneyElement.style.color = '#ffaa00';
+        } else if (this.money < 50) {
+            moneyElement.style.color = '#ff6666';
+        } else {
+            moneyElement.style.color = '#ffffff';
+        }
+    }
+
+    // 清除所有高亮
+    clearHighlights() {
+        const elements = [
+            'lives', 'handsLeft', 'targetScore', 'score', 'playerMoney'
+        ];
+        
+        elements.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.classList.remove('highlight', 'hands-warning', 'critical');
+                element.style.color = ''; // 重置为默认颜色
+            }
+        });
     }
 
     // 渲染激活的技能牌
@@ -894,19 +1088,191 @@ class BalatroGame {
         this.showModal('回合胜利！', `你完成了回合 ${this.round}！\n分数: ${this.score}`, true);
     }
 
-    // 回合失败
+    // 回合失败 - 增强版
     roundLose() {
+        // 检查时间冻结效果
+        if (this.temporaryEffects && this.temporaryEffects.timeFreeze) {
+            this.temporaryEffects.timeFreeze = false;
+            this.showEnhancedModal('时间冻结生效', 
+                '🛡️ 时间冻结护盾激活！\n本次失败不扣除生命值。\n\n💡 时间冻结效果已消耗', 
+                false, 'info');
+            return;
+        }
+        
         this.lives--;
+        const failureReason = this.analyzeFailureReason();
+        
         if (this.lives <= 0) {
-            this.gameOver();
+            this.gameOver(failureReason);
         } else {
-            this.showModal('回合失败', `生命值减少！剩余生命: ${this.lives}`, false);
+            this.showEnhancedModal('回合失败', 
+                this.generateFailureMessage(failureReason), 
+                false, 'warning');
         }
     }
 
-    // 游戏结束
-    gameOver() {
-        this.showModal('游戏结束', `最终分数: ${this.score}\n回合: ${this.round}`, false);
+    // 分析失败原因
+    analyzeFailureReason() {
+        const reasons = [];
+        const suggestions = [];
+        
+        // 检查出牌次数用完
+        if (this.hands <= 0) {
+            reasons.push('出牌次数用完');
+            suggestions.push('考虑购买"额外手数"增强道具');
+            suggestions.push('优先出高分手牌，避免浪费出牌机会');
+        }
+        
+        // 检查分数差距
+        const scoreDiff = this.targetScore - this.score;
+        if (scoreDiff > this.targetScore * 0.8) {
+            reasons.push('分数严重不足');
+            suggestions.push('寻找更强的技能牌组合');
+            suggestions.push('关注手牌类型，同花顺、葫芦等分数更高');
+        } else if (scoreDiff > this.targetScore * 0.5) {
+            reasons.push('分数不足');
+            suggestions.push('考虑购买分数增强道具');
+        } else if (scoreDiff > 0) {
+            reasons.push('分数略微不足');
+            suggestions.push('下次更好地计算分数和选择手牌');
+        }
+        
+        // 检查手牌质量
+        if (this.hand.length > 0) {
+            const avgCardValue = this.hand.reduce((sum, card) => sum + card.value, 0) / this.hand.length;
+            if (avgCardValue < 8) {
+                reasons.push('手牌质量偏低');
+                suggestions.push('考虑购买"卡牌嬗变"道具改善手牌');
+                suggestions.push('优先弃掉低价值卡牌');
+            }
+        }
+        
+        // 检查技能牌数量
+        if (this.activeSkills.length < 2) {
+            reasons.push('技能牌数量不足');
+            suggestions.push('积极购买合适的技能牌');
+            suggestions.push('技能牌是提升分数的关键');
+        }
+        
+        // 检查金币使用
+        if (this.money > 150) {
+            reasons.push('金币使用不当');
+            suggestions.push('合理使用金币购买增强道具');
+            suggestions.push('金币只是手段，分数才是目标');
+        }
+        
+        return {
+            primary: reasons[0] || '未知原因',
+            reasons: reasons,
+            suggestions: suggestions
+        };
+    }
+
+    // 生成失败消息
+    generateFailureMessage(failureAnalysis) {
+        const { primary, reasons, suggestions } = failureAnalysis;
+        
+        let message = `💀 失败原因: ${primary}\n`;
+        message += `❤️ 剩余生命: ${this.lives}\n\n`;
+        
+        if (reasons.length > 1) {
+            message += `📝 详细分析:\n`;
+            reasons.forEach((reason, index) => {
+                message += `  ${index + 1}. ${reason}\n`;
+            });
+            message += '\n';
+        }
+        
+        if (suggestions.length > 0) {
+            message += `💡 改进建议:\n`;
+            suggestions.slice(0, 3).forEach((suggestion, index) => {
+                message += `  • ${suggestion}\n`;
+            });
+        }
+        
+        return message;
+    }
+
+    // 游戏结束 - 增强版
+    gameOver(failureAnalysis = null) {
+        const finalAnalysis = failureAnalysis || this.analyzeFailureReason();
+        
+        let message = `🎮 游戏结束\n`;
+        message += `📊 最终分数: ${this.score}\n`;
+        message += `🎯 到达回合: ${this.round}\n`;
+        message += `💰 剩余金币: ${this.money}\n\n`;
+        
+        // 游戏表现评估
+        const performance = this.evaluatePerformance();
+        message += `🏆 表现评估: ${performance.grade}\n`;
+        message += `${performance.comment}\n\n`;
+        
+        if (finalAnalysis.suggestions.length > 0) {
+            message += `🔍 总结建议:\n`;
+            finalAnalysis.suggestions.slice(0, 3).forEach((suggestion, index) => {
+                message += `  ${index + 1}. ${suggestion}\n`;
+            });
+        }
+        
+        this.showEnhancedModal('游戏结束', message, false, 'error');
+    }
+
+    // 评估游戏表现
+    evaluatePerformance() {
+        const scoreRatio = this.score / (this.round * 300); // 基础期望分数
+        const roundBonus = this.round >= 5 ? 1.5 : this.round >= 3 ? 1.2 : 1;
+        const skillBonus = this.activeSkills.length >= 3 ? 1.3 : this.activeSkills.length >= 1 ? 1.1 : 0.8;
+        
+        const totalScore = scoreRatio * roundBonus * skillBonus;
+        
+        if (totalScore >= 2.0) {
+            return { grade: 'S 传说', comment: '🌟 出色的表现！你已经掌握了游戏精髓！' };
+        } else if (totalScore >= 1.5) {
+            return { grade: 'A 优秀', comment: '🎉 很棒的游戏！继续保持这种策略！' };
+        } else if (totalScore >= 1.0) {
+            return { grade: 'B 良好', comment: '👍 不错的尝试，还有提升空间。' };
+        } else if (totalScore >= 0.7) {
+            return { grade: 'C 一般', comment: '📈 继续练习，你会越来越好的！' };
+        } else {
+            return { grade: 'D 需要改进', comment: '💪 别灰心，多尝试不同的策略吧！' };
+        }
+    }
+
+    // 增强版弹窗显示
+    showEnhancedModal(title, message, showNextRound = false, type = 'info') {
+        const modal = document.getElementById('gameModal');
+        const modalContent = modal.querySelector('.modal-content');
+        
+        // 根据类型设置样式
+        modalContent.className = 'modal-content';
+        switch(type) {
+            case 'error':
+                modalContent.classList.add('modal-error');
+                break;
+            case 'warning':
+                modalContent.classList.add('modal-warning');
+                break;
+            case 'success':
+                modalContent.classList.add('modal-success');
+                break;
+            case 'info':
+            default:
+                modalContent.classList.add('modal-info');
+                break;
+        }
+        
+        document.getElementById('modalTitle').textContent = title;
+        document.getElementById('modalMessage').textContent = message;
+        document.getElementById('nextRoundBtn').style.display = showNextRound ? 'inline-block' : 'none';
+        modal.style.display = 'block';
+        
+        // 添加震动效果（如果是失败）
+        if (type === 'error' || type === 'warning') {
+            modalContent.classList.add('shake-animation');
+            setTimeout(() => {
+                modalContent.classList.remove('shake-animation');
+            }, 500);
+        }
     }
 
     // 显示弹窗
@@ -973,6 +1339,7 @@ class BalatroGame {
     // 生成技能牌
     generateSkillCards() {
         const allSkillCards = [
+            // 基础增强类
             {
                 id: 'lucky_seven',
                 name: '幸运七',
@@ -980,6 +1347,7 @@ class BalatroGame {
                 icon: '🍀',
                 description: '每当你打出包含7的牌时，获得额外的2倍乘数',
                 price: 80,
+                rarity: 'common',
                 effect: { type: 'rankBonus', rank: '7', value: 2 },
                 trigger: 'onPlayHand'
             },
@@ -990,6 +1358,7 @@ class BalatroGame {
                 icon: '👑',
                 description: '同花顺的乘数增加5',
                 price: 150,
+                rarity: 'rare',
                 effect: { type: 'handTypeBonus', handType: '同花顺', value: 5 }
             },
             {
@@ -999,6 +1368,7 @@ class BalatroGame {
                 icon: '💖',
                 description: '每张红心牌增加10点基础分数',
                 price: 90,
+                rarity: 'common',
                 effect: { type: 'suitBonus', suit: '♥', value: 10 }
             },
             {
@@ -1008,8 +1378,30 @@ class BalatroGame {
                 icon: '⚫',
                 description: '每张黑桃牌增加8点基础分数',
                 price: 85,
+                rarity: 'common',
                 effect: { type: 'suitBonus', suit: '♠', value: 8 }
             },
+            {
+                id: 'diamond_brilliance',
+                name: '钻石光辉',
+                shortName: '钻石',
+                icon: '💎',
+                description: '每张方块牌增加12点基础分数',
+                price: 95,
+                rarity: 'common',
+                effect: { type: 'suitBonus', suit: '♦', value: 12 }
+            },
+            {
+                id: 'club_force',
+                name: '梅花之力',
+                shortName: '梅花',
+                icon: '♣️',
+                description: '每张梅花牌增加9点基础分数',
+                price: 88,
+                rarity: 'common',
+                effect: { type: 'suitBonus', suit: '♣', value: 9 }
+            },
+            // 手牌类型增强
             {
                 id: 'pair_master',
                 name: '对子大师',
@@ -1017,8 +1409,61 @@ class BalatroGame {
                 icon: '👥',
                 description: '一对和两对的乘数增加3',
                 price: 100,
+                rarity: 'common',
                 effect: { type: 'handTypeBonus', handType: '一对', value: 3 }
             },
+            {
+                id: 'straight_master',
+                name: '顺子大师',
+                shortName: '顺子',
+                icon: '📈',
+                description: '顺子和同花顺的基础分数增加40',
+                price: 130,
+                rarity: 'uncommon',
+                effect: { type: 'handTypeBonus', handType: '顺子', value: 40 }
+            },
+            {
+                id: 'flush_master',
+                name: '同花大师',
+                shortName: '同花',
+                icon: '🌈',
+                description: '同花的乘数增加4',
+                price: 125,
+                rarity: 'uncommon',
+                effect: { type: 'handTypeBonus', handType: '同花', value: 4 }
+            },
+            {
+                id: 'full_house_king',
+                name: '葫芦之王',
+                shortName: '葫芦',
+                icon: '🏠',
+                description: '葫芦的基础分数增加60，乘数增加3',
+                price: 160,
+                rarity: 'rare',
+                effect: { type: 'handTypeBonus', handType: '葫芦', chipValue: 60, multValue: 3 }
+            },
+            // 高牌位增强
+            {
+                id: 'ace_supremacy',
+                name: 'A牌至尊',
+                shortName: 'A牌',
+                icon: '🔥',
+                description: '每张A牌额外增加20点基础分数和1倍乘数',
+                price: 140,
+                rarity: 'uncommon',
+                effect: { type: 'rankBonus', rank: 'A', chipValue: 20, multValue: 1 }
+            },
+            {
+                id: 'face_cards_glory',
+                name: '人头牌荣耀',
+                shortName: '人头',
+                icon: '👑',
+                description: 'J、Q、K牌各自增加15点基础分数',
+                price: 120,
+                rarity: 'uncommon',
+                effect: { type: 'faceCardBonus', value: 15 }
+            },
+            // 全局增强
             {
                 id: 'multiplier_boost',
                 name: '乘数增强',
@@ -1026,6 +1471,7 @@ class BalatroGame {
                 icon: '✖️',
                 description: '所有手牌乘数+2',
                 price: 120,
+                rarity: 'uncommon',
                 effect: { type: 'multiplierBonus', value: 2 }
             },
             {
@@ -1035,8 +1481,21 @@ class BalatroGame {
                 icon: '🔹',
                 description: '所有手牌基础分数+30',
                 price: 110,
+                rarity: 'uncommon',
                 effect: { type: 'chipBonus', value: 30 }
             },
+            {
+                id: 'double_trouble',
+                name: '双倍麻烦',
+                shortName: '双倍',
+                icon: '⚡',
+                description: '有25%几率使手牌分数翻倍',
+                price: 180,
+                rarity: 'rare',
+                effect: { type: 'randomDouble', chance: 0.25 },
+                trigger: 'onScoreCalculation'
+            },
+            // 经济类
             {
                 id: 'money_maker',
                 name: '生财有道',
@@ -1044,25 +1503,101 @@ class BalatroGame {
                 icon: '💰',
                 description: '每次出牌额外获得5金币',
                 price: 95,
+                rarity: 'common',
                 triggerEffect: { type: 'moneyBonus', value: 5 },
                 trigger: 'onPlayHand'
+            },
+            {
+                id: 'greedy_hands',
+                name: '贪婪之手',
+                shortName: '贪婪',
+                icon: '🤑',
+                description: '每次回合结束时获得金币等于剩余手数×3',
+                price: 110,
+                rarity: 'uncommon',
+                triggerEffect: { type: 'endRoundMoney', multiplier: 3 },
+                trigger: 'onRoundEnd'
+            },
+            // 特殊机制
+            {
+                id: 'lucky_draw',
+                name: '幸运抽取',
+                shortName: '幸运',
+                icon: '🎰',
+                description: '弃牌时有30%几率额外抽取1张牌',
+                price: 105,
+                rarity: 'uncommon',
+                effect: { type: 'luckyDraw', chance: 0.3 },
+                trigger: 'onDiscard'
+            },
+            {
+                id: 'phoenix_revival',
+                name: '凤凰重生',
+                shortName: '凤凰',
+                icon: '🔥🐦',
+                description: '生命值降至0时自动复活并恢复1点生命（每局限用1次）',
+                price: 250,
+                rarity: 'legendary',
+                effect: { type: 'revival', uses: 1 },
+                trigger: 'onDeath'
+            },
+            {
+                id: 'time_manipulation',
+                name: '时间操控',
+                shortName: '时间',
+                icon: '⏰',
+                description: '每回合开始时获得1次额外的出牌机会',
+                price: 140,
+                rarity: 'rare',
+                effect: { type: 'extraHands', value: 1 },
+                trigger: 'onRoundStart'
             }
         ];
         
-        // 随机选择3张技能牌
-        const shuffled = allSkillCards.sort(() => 0.5 - Math.random());
-        return shuffled.slice(0, 3);
+        // 根据稀有度和回合数调整出现概率
+        const weightedCards = [];
+        allSkillCards.forEach(card => {
+            let weight = 1;
+            switch(card.rarity) {
+                case 'common': weight = 50; break;
+                case 'uncommon': weight = 25; break;
+                case 'rare': weight = 10; break;
+                case 'legendary': weight = this.round >= 3 ? 3 : 0; break;
+            }
+            
+            for(let i = 0; i < weight; i++) {
+                weightedCards.push(card);
+            }
+        });
+        
+        // 随机选择3张技能牌，避免重复
+        const selected = [];
+        const used = new Set();
+        
+        while(selected.length < 3 && weightedCards.length > 0) {
+            const randomIndex = Math.floor(Math.random() * weightedCards.length);
+            const card = weightedCards[randomIndex];
+            
+            if(!used.has(card.id)) {
+                selected.push(card);
+                used.add(card.id);
+            }
+        }
+        
+        return selected;
     }
 
     // 生成增强道具
     generateEnhancements() {
         const allEnhancements = [
+            // 基础增强
             {
                 id: 'extra_life',
                 name: '额外生命',
                 icon: '❤️',
                 description: '增加1点生命值',
                 price: 100,
+                rarity: 'uncommon',
                 effect: 'life'
             },
             {
@@ -1071,6 +1606,7 @@ class BalatroGame {
                 icon: '🤲',
                 description: '每回合增加2次出牌机会',
                 price: 150,
+                rarity: 'rare',
                 effect: 'hands'
             },
             {
@@ -1079,6 +1615,7 @@ class BalatroGame {
                 icon: '🗑️',
                 description: '每回合增加2次弃牌机会',
                 price: 120,
+                rarity: 'uncommon',
                 effect: 'discards'
             },
             {
@@ -1087,22 +1624,92 @@ class BalatroGame {
                 icon: '📈',
                 description: '所有分数获得1.5倍乘数',
                 price: 200,
+                rarity: 'rare',
                 effect: 'scoreMultiplier'
+            },
+            // 进阶增强
+            {
+                id: 'hand_size_boost',
+                name: '手牌扩容',
+                icon: '📋',
+                description: '手牌上限增加2张',
+                price: 180,
+                rarity: 'rare',
+                effect: 'handSize'
+            },
+            {
+                id: 'money_multiplier',
+                name: '金币倍增',
+                icon: '💵',
+                description: '所有金币收入增加50%',
+                price: 160,
+                rarity: 'uncommon',
+                effect: 'moneyMultiplier'
+            },
+            {
+                id: 'lucky_charm',
+                name: '幸运护身符',
+                icon: '🧿',
+                description: '所有随机事件成功率提高20%',
+                price: 140,
+                rarity: 'uncommon',
+                effect: 'luckBoost'
+            },
+            {
+                id: 'perfect_balance',
+                name: '完美平衡',
+                icon: '⚖️',
+                description: '每回合开始时，如果手牌少于6张，补充至6张',
+                price: 170,
+                rarity: 'rare',
+                effect: 'handBalance'
             }
         ];
         
-        return allEnhancements.slice(0, 2);
+        // 根据稀有度筛选
+        const weightedEnhancements = [];
+        allEnhancements.forEach(item => {
+            let weight = 1;
+            switch(item.rarity) {
+                case 'common': weight = 40; break;
+                case 'uncommon': weight = 25; break;
+                case 'rare': weight = 8; break;
+            }
+            
+            for(let i = 0; i < weight; i++) {
+                weightedEnhancements.push(item);
+            }
+        });
+        
+        // 随机选择2-3个道具
+        const selected = [];
+        const used = new Set();
+        const count = Math.random() < 0.3 ? 3 : 2;
+        
+        while(selected.length < count && weightedEnhancements.length > 0) {
+            const randomIndex = Math.floor(Math.random() * weightedEnhancements.length);
+            const item = weightedEnhancements[randomIndex];
+            
+            if(!used.has(item.id)) {
+                selected.push(item);
+                used.add(item.id);
+            }
+        }
+        
+        return selected;
     }
 
     // 生成特殊物品
     generateSpecials() {
         const allSpecials = [
+            // 直接效果类
             {
                 id: 'golden_card',
                 name: '黄金卡牌',
                 icon: '🏆',
                 description: '直接获得200分数',
                 price: 150,
+                rarity: 'uncommon',
                 effect: 'directScore'
             },
             {
@@ -1111,19 +1718,143 @@ class BalatroGame {
                 icon: '💼',
                 description: '直接获得100金币',
                 price: 50,
+                rarity: 'common',
                 effect: 'directMoney'
             },
+            {
+                id: 'mega_boost',
+                name: '超级增强',
+                icon: '💥',
+                description: '直接获得500分数',
+                price: 280,
+                rarity: 'rare',
+                effect: 'megaScore'
+            },
+            // 目标调整类
             {
                 id: 'target_reducer',
                 name: '目标减少器',
                 icon: '🎯',
                 description: '减少当前目标分数的20%',
                 price: 180,
+                rarity: 'uncommon',
                 effect: 'reduceTarget'
+            },
+            {
+                id: 'difficulty_adjuster',
+                name: '难度调节器',
+                icon: '⚙️',
+                description: '减少未来所有回合目标分数的10%',
+                price: 250,
+                rarity: 'rare',
+                effect: 'reduceFutureTargets'
+            },
+            // 特殊机制类
+            {
+                id: 'time_freeze',
+                name: '时间冻结',
+                icon: '❄️',
+                description: '本回合失败不扣除生命值',
+                price: 200,
+                rarity: 'rare',
+                effect: 'timeFreeze'
+            },
+            {
+                id: 'card_transmute',
+                name: '卡牌嬗变',
+                icon: '🔬',
+                description: '将手牌中一张最低价值的牌变成A',
+                price: 160,
+                rarity: 'uncommon',
+                effect: 'cardTransmute'
+            },
+            {
+                id: 'perfect_hand',
+                name: '完美手牌',
+                icon: '✨',
+                description: '下一次出牌自动获得最佳组合分数',
+                price: 220,
+                rarity: 'rare',
+                effect: 'perfectHand'
+            },
+            {
+                id: 'shop_refresh',
+                name: '商店刷新券',
+                icon: '🔄',
+                description: '免费刷新商店一次',
+                price: 80,
+                rarity: 'common',
+                effect: 'freeRefresh'
+            },
+            {
+                id: 'deck_shuffle',
+                name: '牌组重洗',
+                icon: '🔀',
+                description: '重新洗牌并抽取8张新手牌',
+                price: 120,
+                rarity: 'uncommon',
+                effect: 'deckShuffle'
+            },
+            // 稀有特殊物品
+            {
+                id: 'divine_blessing',
+                name: '神圣祝福',
+                icon: '🙏',
+                description: '立即通过本回合并获得额外100金币',
+                price: 350,
+                rarity: 'legendary',
+                effect: 'divineBlessing'
+            },
+            {
+                id: 'chaos_orb',
+                name: '混沌宝珠',
+                icon: '🔮',
+                description: '随机获得3个增强效果（风险与机遇并存）',
+                price: 300,
+                rarity: 'legendary',
+                effect: 'chaosOrb'
             }
         ];
         
-        return allSpecials.slice(0, 2);
+        // 根据稀有度和可用性筛选
+        const availableSpecials = allSpecials.filter(item => {
+            // 某些物品需要特定条件
+            if (item.id === 'time_freeze' && this.lives <= 1) return false;
+            if (item.id === 'card_transmute' && this.hand.length === 0) return false;
+            return true;
+        });
+        
+        const weightedSpecials = [];
+        availableSpecials.forEach(item => {
+            let weight = 1;
+            switch(item.rarity) {
+                case 'common': weight = 30; break;
+                case 'uncommon': weight = 15; break;
+                case 'rare': weight = 5; break;
+                case 'legendary': weight = this.round >= 4 ? 2 : 0; break;
+            }
+            
+            for(let i = 0; i < weight; i++) {
+                weightedSpecials.push(item);
+            }
+        });
+        
+        // 随机选择1-2个特殊物品
+        const selected = [];
+        const used = new Set();
+        const count = Math.random() < 0.4 ? 2 : 1;
+        
+        while(selected.length < count && weightedSpecials.length > 0) {
+            const randomIndex = Math.floor(Math.random() * weightedSpecials.length);
+            const item = weightedSpecials[randomIndex];
+            
+            if(!used.has(item.id)) {
+                selected.push(item);
+                used.add(item.id);
+            }
+        }
+        
+        return selected;
     }
 
     // 渲染商店
@@ -1141,9 +1872,22 @@ class BalatroGame {
         items.forEach(item => {
             const itemElement = document.createElement('div');
             itemElement.className = `shop-item ${itemClass}`;
+            
+            // 添加稀有度样式
+            const rarityClass = item.rarity ? `rarity-${item.rarity}` : '';
+            if (rarityClass) {
+                itemElement.classList.add(rarityClass);
+            }
+            
+            // 稀有度显示文本
+            const rarityText = item.rarity ? this.getRarityText(item.rarity) : '';
+            
             itemElement.innerHTML = `
                 <div class="shop-item-icon">${item.icon}</div>
-                <div class="shop-item-name">${item.name}</div>
+                <div class="shop-item-header">
+                    <div class="shop-item-name">${item.name}</div>
+                    ${rarityText ? `<div class="shop-item-rarity">${rarityText}</div>` : ''}
+                </div>
                 <div class="shop-item-description">${item.description}</div>
                 <div class="shop-item-price">💰 ${item.price}</div>
             `;
@@ -1156,6 +1900,17 @@ class BalatroGame {
             
             container.appendChild(itemElement);
         });
+    }
+
+    // 获取稀有度文本
+    getRarityText(rarity) {
+        const rarityTexts = {
+            'common': '普通',
+            'uncommon': '罕见',
+            'rare': '稀有',
+            'legendary': '传说'
+        };
+        return rarityTexts[rarity] || '';
     }
 
     // 购买物品
@@ -1233,31 +1988,104 @@ class BalatroGame {
     }
 
     // 应用物品效果
+    // 应用物品效果
     applyItemEffect(item) {
         if (item.effect) {
             switch (item.effect) {
+                // 基础增强效果
                 case 'life':
                     this.lives++;
+                    this.showTemporaryMessage(`生命值增加1！当前生命值：${this.lives}`, 'success');
                     break;
                 case 'hands':
                     this.permanentBonuses.extraHands += 2;
                     this.hands += 2;
+                    this.showTemporaryMessage('每回合额外获得2次出牌机会！', 'success');
                     break;
                 case 'discards':
                     this.permanentBonuses.extraDiscards += 2;
                     this.discards += 2;
+                    this.showTemporaryMessage('每回合额外获得2次弃牌机会！', 'success');
                     break;
                 case 'scoreMultiplier':
                     this.permanentBonuses.scoreMultiplier += 0.5;
+                    this.showTemporaryMessage('所有分数获得1.5倍乘数！', 'success');
                     break;
+                    
+                // 新增增强效果
+                case 'handSize':
+                    this.maxHandSize = (this.maxHandSize || 8) + 2;
+                    this.showTemporaryMessage('手牌上限增加2张！', 'success');
+                    break;
+                case 'moneyMultiplier':
+                    this.permanentBonuses.extraMoney += 0.5;
+                    this.showTemporaryMessage('金币收入增加50%！', 'success');
+                    break;
+                case 'luckBoost':
+                    this.permanentBonuses.luckBoost = (this.permanentBonuses.luckBoost || 0) + 0.2;
+                    this.showTemporaryMessage('幸运值提升！随机事件成功率+20%', 'success');
+                    break;
+                case 'handBalance':
+                    this.permanentBonuses.handBalance = true;
+                    this.showTemporaryMessage('获得手牌平衡！每回合开始手牌不足6张时自动补充', 'success');
+                    break;
+                    
+                // 直接效果
                 case 'directScore':
                     this.score += 200;
+                    this.createScoreExplosion(document.getElementById('scoreDisplay'), 200);
+                    this.showTemporaryMessage('直接获得200分数！', 'success');
+                    break;
+                case 'megaScore':
+                    this.score += 500;
+                    this.createScoreExplosion(document.getElementById('scoreDisplay'), 500);
+                    this.showTemporaryMessage('超级分数增强！获得500分数！', 'success');
                     break;
                 case 'directMoney':
                     this.money += 100;
+                    this.showTemporaryMessage('直接获得100金币！', 'success');
                     break;
+                    
+                // 目标调整
                 case 'reduceTarget':
-                    this.targetScore = Math.floor(this.targetScore * 0.8);
+                    const reduction = Math.floor(this.targetScore * 0.2);
+                    this.targetScore -= reduction;
+                    this.showTemporaryMessage(`目标分数减少${reduction}！新目标：${this.targetScore}`, 'success');
+                    break;
+                case 'reduceFutureTargets':
+                    this.permanentBonuses.targetReduction = (this.permanentBonuses.targetReduction || 0) + 0.1;
+                    this.showTemporaryMessage('难度降低！未来所有回合目标分数-10%', 'success');
+                    break;
+                    
+                // 特殊机制
+                case 'timeFreeze':
+                    this.temporaryEffects = this.temporaryEffects || {};
+                    this.temporaryEffects.timeFreeze = true;
+                    this.showTemporaryMessage('时间冻结！本回合失败不扣除生命值', 'success');
+                    break;
+                case 'cardTransmute':
+                    this.transmuteLowestCard();
+                    break;
+                case 'perfectHand':
+                    this.temporaryEffects = this.temporaryEffects || {};
+                    this.temporaryEffects.perfectHand = true;
+                    this.showTemporaryMessage('完美手牌！下次出牌自动获得最佳分数', 'success');
+                    break;
+                case 'freeRefresh':
+                    this.generateShopItems();
+                    this.showTemporaryMessage('商店免费刷新！', 'success');
+                    break;
+                case 'deckShuffle':
+                    this.shuffleAndRedeal();
+                    break;
+                case 'divineBlessing':
+                    this.score = Math.max(this.score, this.targetScore);
+                    this.money += 100;
+                    this.showTemporaryMessage('神圣祝福！立即通过本回合并获得100金币！', 'success');
+                    setTimeout(() => this.checkRoundWin(), 100);
+                    break;
+                case 'chaosOrb':
+                    this.applyChaosEffects();
                     break;
             }
         }
@@ -1265,7 +2093,129 @@ class BalatroGame {
         // 如果是技能牌，添加到激活技能列表
         if (item.effect && typeof item.effect === 'object') {
             this.activeSkills.push(item);
+            this.showTemporaryMessage(`技能激活：${item.name}`, 'success');
         }
+    }
+
+    // 嬗变最低价值卡牌
+    transmuteLowestCard() {
+        if (this.hand.length === 0) {
+            this.showTemporaryMessage('手牌为空，无法嬗变！', 'error');
+            return;
+        }
+        
+        // 找到价值最低的牌
+        let lowestCard = this.hand[0];
+        let lowestIndex = 0;
+        
+        for (let i = 1; i < this.hand.length; i++) {
+            if (this.hand[i].value < lowestCard.value) {
+                lowestCard = this.hand[i];
+                lowestIndex = i;
+            }
+        }
+        
+        // 将其变成A
+        const suits = ['♠', '♥', '♦', '♣'];
+        const suitClasses = ['spades', 'hearts', 'diamonds', 'clubs'];
+        const randomSuitIndex = Math.floor(Math.random() * suits.length);
+        
+        this.hand[lowestIndex] = {
+            suit: suits[randomSuitIndex],
+            rank: 'A',
+            suitClass: suitClasses[randomSuitIndex],
+            value: 14,
+            id: `A_${suitClasses[randomSuitIndex]}_transmuted`
+        };
+        
+        this.renderHand();
+        this.showTemporaryMessage(`卡牌嬗变成功！${lowestCard.rank}${lowestCard.suit} → A${suits[randomSuitIndex]}`, 'success');
+    }
+
+    // 重新洗牌和发牌
+    shuffleAndRedeal() {
+        // 将手牌放回牌组
+        this.deck = [...this.deck, ...this.hand];
+        this.shuffleDeck();
+        
+        // 重新发8张牌
+        this.hand = this.deck.splice(0, 8);
+        this.selectedCards = [];
+        
+        this.renderHand();
+        this.showTemporaryMessage('牌组重洗完成！获得8张新手牌', 'success');
+    }
+
+    // 应用混沌效果
+    applyChaosEffects() {
+        const possibleEffects = [
+            { effect: 'life', chance: 0.3, positive: true },
+            { effect: 'hands', chance: 0.25, positive: true },
+            { effect: 'discards', chance: 0.25, positive: true },
+            { effect: 'scoreMultiplier', chance: 0.2, positive: true },
+            { effect: 'directScore', chance: 0.4, positive: true },
+            { effect: 'directMoney', chance: 0.5, positive: true },
+            // 负面效果
+            { type: 'loseMoney', chance: 0.2, positive: false },
+            { type: 'loseHands', chance: 0.15, positive: false },
+            { type: 'increaseTarget', chance: 0.1, positive: false }
+        ];
+        
+        const results = [];
+        
+        // 随机获得3个效果
+        for (let i = 0; i < 3; i++) {
+            const randomEffect = possibleEffects[Math.floor(Math.random() * possibleEffects.length)];
+            const luck = this.permanentBonuses.luckBoost || 0;
+            const effectiveChance = randomEffect.positive ? 
+                Math.min(1, randomEffect.chance + luck) : 
+                Math.max(0, randomEffect.chance - luck);
+            
+            if (Math.random() < effectiveChance) {
+                if (randomEffect.effect) {
+                    // 正面效果
+                    this.applyItemEffect({ effect: randomEffect.effect });
+                    results.push(`✓ ${this.getEffectDescription(randomEffect.effect)}`);
+                } else {
+                    // 负面效果
+                    switch (randomEffect.type) {
+                        case 'loseMoney':
+                            const moneyLoss = Math.min(50, this.money);
+                            this.money -= moneyLoss;
+                            results.push(`✗ 失去${moneyLoss}金币`);
+                            break;
+                        case 'loseHands':
+                            if (this.hands > 1) {
+                                this.hands--;
+                                results.push(`✗ 失去1次出牌机会`);
+                            }
+                            break;
+                        case 'increaseTarget':
+                            const increase = Math.floor(this.targetScore * 0.1);
+                            this.targetScore += increase;
+                            results.push(`✗ 目标分数增加${increase}`);
+                            break;
+                    }
+                }
+            } else {
+                results.push('○ 效果失败');
+            }
+        }
+        
+        this.showTemporaryMessage(`混沌宝珠效果：\n${results.join('\n')}`, 'info', 4000);
+    }
+
+    // 获取效果描述
+    getEffectDescription(effect) {
+        const descriptions = {
+            'life': '生命值+1',
+            'hands': '出牌机会+2',
+            'discards': '弃牌机会+2',
+            'scoreMultiplier': '分数倍数+0.5',
+            'directScore': '分数+200',
+            'directMoney': '金币+100'
+        };
+        return descriptions[effect] || '未知效果';
     }
 
     // 刷新商店（更新版本）

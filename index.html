@@ -117,18 +117,30 @@
                     </div>
                     <div class="hand-actions">
                         <div class="action-info">
-                            <div class="action-counter">
-                                <span class="counter-label">🎯 出牌次数:</span>
-                                <span class="counter-value" id="handsLeft">4</span>
+                            <div class="action-counter urgent" id="handsCounter">
+                                <div class="counter-icon">🎯</div>
+                                <div class="counter-content">
+                                    <span class="counter-label">出牌次数</span>
+                                    <span class="counter-value" id="handsLeft">4</span>
+                                </div>
                             </div>
-                            <div class="action-counter">
-                                <span class="counter-label">🗑️ 弃牌次数:</span>
-                                <span class="counter-value" id="discardsLeft">3</span>
+                            <div class="action-counter" id="discardsCounter">
+                                <div class="counter-icon">🗑️</div>
+                                <div class="counter-content">
+                                    <span class="counter-label">弃牌次数</span>
+                                    <span class="counter-value" id="discardsLeft">3</span>
+                                </div>
                             </div>
                         </div>
                         <div class="action-buttons">
-                            <button id="discardBtn" class="action-btn discard-btn">🗑️ 弃牌</button>
-                            <button id="drawBtn" class="action-btn draw-btn">📥 抽牌</button>
+                            <button id="discardBtn" class="action-btn discard-btn">
+                                <span class="btn-icon">🗑️</span>
+                                <span class="btn-text">弃牌</span>
+                            </button>
+                            <button id="drawBtn" class="action-btn draw-btn">
+                                <span class="btn-icon">📥</span>
+                                <span class="btn-text">抽牌</span>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -178,11 +190,43 @@
         <!-- 游戏结果弹窗 -->
         <div id="gameModal" class="modal">
             <div class="modal-content">
+                <div class="modal-icon" id="modalIcon">🎉</div>
                 <h2 id="modalTitle">游戏结束</h2>
+                <div class="modal-stats" id="modalStats">
+                    <div class="stat-item">
+                        <span class="stat-label">最终分数:</span>
+                        <span class="stat-value" id="finalScore">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">到达回合:</span>
+                        <span class="stat-value" id="finalRound">1</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">剩余生命:</span>
+                        <span class="stat-value" id="finalLives">3</span>
+                    </div>
+                </div>
                 <p id="modalMessage">你的分数: 0</p>
+                <div class="failure-reason" id="failureReason" style="display: none;">
+                    <h4>失败原因:</h4>
+                    <div id="failureDetails"></div>
+                </div>
                 <div class="modal-actions">
-                    <button id="restartBtn" class="modal-btn">重新开始</button>
-                    <button id="nextRoundBtn" class="modal-btn" style="display: none;">下一回合</button>
+                    <button id="restartBtn" class="modal-btn primary">🔄 重新开始</button>
+                    <button id="nextRoundBtn" class="modal-btn success" style="display: none;">➡️ 下一回合</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 警告提示弹窗 -->
+        <div id="warningModal" class="modal warning-modal">
+            <div class="modal-content warning-content">
+                <div class="warning-icon">⚠️</div>
+                <h3 id="warningTitle">警告</h3>
+                <p id="warningMessage">警告信息</p>
+                <div class="warning-details" id="warningDetails"></div>
+                <div class="modal-actions">
+                    <button id="warningOkBtn" class="modal-btn primary">明白了</button>
                 </div>
             </div>
         </div>
@@ -190,7 +234,7 @@
 
     <!-- 音频元素 -->
     <audio id="bgMusic" loop>
-        <source src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMnCj6b3/HNeSsFJnbB7t2OQA0UZMLx6N6NORQfdLPx5qJcEQdOp+T1tnkfCEOy0/DFeC4KIX7I8tuPPw0lUKfk866ReTMFOpLh8N6PRg0XZrDj665XFQdLn9/ypbFqGwY9j9X90MZrKwUogczz44pbGQxOqeTwrm4jBjGBvfDgklMUBF67ysQ1HBxPt+LtvGQmBSJ+xPHbfSkNJVGo6fh1HwdPqOL1rXcdCT2a3u9BIAxPqtn1wWsqBSV+yO7eizEKHWqz5PSsWBIKS6Dh9KppHw=="/>
+        <!-- 使用Web Audio API生成的音乐，而不是base64 -->
     </audio>
     
     <script src="script.js"></script>
